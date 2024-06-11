@@ -257,6 +257,60 @@ class InkmlDataset(Dataset):
         return delta_traces_tensor, label_tensor
 
 
+class InkmlDataset_PL(pl.LightningDataModule):
+    def __init__(
+        self,
+        batch_size: int = 10,
+        workers: int = 5,
+        train_data: str = "dataset/crohme2019_train.txt",
+        val_data: str = "dataset/crohme2019_valid.txt",
+        test_data: str = "dataset/crohme2019_test.txt",
+    ):
+        super().__init__()
+        self.batch_size = batch_size
+        self.workers = workers
+        self.train_data = train_data
+        self.val_data = val_data
+        self.test_data = test_data
+
+    def setup(self, stage=None):
+        if stage == "fit" or stage is None:
+            self.train_dataset = InkmlDataset(self.train_data)
+            self.val_dataset = InkmlDataset(self.val_data)
+        if stage == "test" or stage is None:
+            self.test_dataset = InkmlDataset(self.test_data)
+
+    def custom_collate_fn(self, data):
+        traces, labels = zip(*data)
+        padded_traces = pad_sequence(traces, batch_first=True)
+        padded_labels = pad_sequence(labels, batch_first=True)
+        return padded_traces, padded_labels
+    
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.workers,
+            collate_fn=self.custom_collate_fn,
+        )
+    
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.workers,
+            collate_fn=self.custom_collate_fn,
+        )
+    
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.workers,
+            collate_fn=self.custom_collate_fn,
+        )
+
+
 if __name__ == "__main__":
     dataset = InkmlDataset("dataset/crohme2019_test.txt")
     dataset.__getitem__(0)
