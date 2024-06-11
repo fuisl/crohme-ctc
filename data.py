@@ -97,11 +97,11 @@ class Inkml(object):
 
 """
 TODO: 
-- [ ] build vocabulary
-- [ ] remove duplicate (next in sequence)
-- [ ] normalize (delta x, delta y)
-- [ ] concat traces in a single array (n, 2)
-- [ ] pad to max length (collate)
+- [x] build vocabulary
+- [x] remove duplicate (next in sequence) --> no duplicate found in the dataset
+- [x] normalize (delta x, delta y)
+- [x] concat traces in a single array (n, 2)
+- [ ] pad to max length (collate) ==> do in Dataloader
 """
 
 
@@ -233,33 +233,31 @@ class InkmlDataset(Dataset):
             self.inks.append(inkml)
             self.labels.append(label)
 
-    def normalize(self):
-        for ink in self.inks:
-            traces = ink.getTraces()
-            for i in range(len(traces) - 1):
-                traces[i + 1] = np.array(traces[i + 1]) - np.array(traces[i])
-
-    # def concatTraces(self):
-    #     for ink in self.inks:
-    #         ink.traces = np.concatenate(ink.getTraces(), 0)
-
-    # def padTraces(self):
-    #     for ink in self.inks:
-    #         ink.traces = pad_sequence(
-    #             [torch.tensor(trace) for trace in ink.getTraces()], batch_first=True])
-            
+            # traces = inkml.getTraces()
+            # for trace in traces:
+            #     for i in range(0, len(trace) - 1):
+            #         if trace[i] == trace[i + 1]:
+            #             print(i)
 
     def __len__(self):
         return len(self.inks)
 
     def __getitem__(self, idx):
-        return self.inks[idx].getTraces(), self.labels[idx]
-    
+        traces = self.inks[idx].getTraces()
+        delta_traces = []
+        for trace in traces:
+            delta_trace = np.diff(trace, axis=0)
+            delta_traces.append(delta_trace)
+        combined_traces = np.vstack(delta_traces)
+        delta_traces_tensor = torch.tensor(combined_traces, dtype=torch.float32)
 
-"""
-input file anot root dir
-output delta_trace, label [0, 2 ,2 , 13]
+        translated_label = [self.vocab[label] for label in self.labels[idx].split(" ")]
+        label_tensor = torch.tensor(translated_label, dtype=torch.long)
+
+        return delta_traces_tensor, label_tensor
 
 
-pen up pen down
-"""
+if __name__ == "__main__":
+    dataset = InkmlDataset("dataset/crohme2019_test.txt")
+    dataset.__getitem__(0)
+    print(len(dataset))
