@@ -6,7 +6,7 @@ class LSTM_TemporalClassification(nn.Module):
     def __init__(self, input_size=3, hidden_size=128, num_layers=1, num_classes=109):
         super(LSTM_TemporalClassification, self).__init__()
 
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size*2, num_classes)
 
     def forward(self, x):
@@ -17,5 +17,8 @@ class LSTM_TemporalClassification(nn.Module):
     
 if __name__ == '__main__':
     model = LSTM_TemporalClassification()
-    x = torch.randn((20, 20, 1))
-    y, _ = model(x)
+    # feature has shape (1, 3)
+    x = torch.randn((1, 3, 3))
+
+    out = model(x)
+    print(out.shape)
