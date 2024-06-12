@@ -245,10 +245,15 @@ class InkmlDataset(Dataset):
     def __getitem__(self, idx):
         traces = self.inks[idx].getTraces()
         delta_traces = []
+        pen_up = []
         for trace in traces:
+            trace = np.vstack([np.array(trace), np.array(trace)]) if len(trace) == 1 else trace
             delta_trace = np.diff(trace, axis=0)
-            delta_traces.append(delta_trace)
-        combined_traces = np.vstack(delta_traces)
+            delta_traces.append(delta_trace[:, :2])
+            pen_up.append(np.zeros((len(delta_trace), 1)))
+            pen_up[-1][-1] = 1
+
+        combined_traces = np.hstack([np.vstack(delta_traces), np.concatenate(pen_up)])
         delta_traces_tensor = torch.tensor(combined_traces, dtype=torch.float32)
 
         translated_label = [self.vocab[label] for label in self.labels[idx].split(" ")]
@@ -285,7 +290,7 @@ class InkmlDataset_PL(pl.LightningDataModule):
         padded_traces = pad_sequence(traces, batch_first=True)
         padded_labels = pad_sequence(labels, batch_first=True)
         return padded_traces, padded_labels
-    
+
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
@@ -293,7 +298,7 @@ class InkmlDataset_PL(pl.LightningDataModule):
             num_workers=self.workers,
             collate_fn=self.custom_collate_fn,
         )
-    
+
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
@@ -301,7 +306,7 @@ class InkmlDataset_PL(pl.LightningDataModule):
             num_workers=self.workers,
             collate_fn=self.custom_collate_fn,
         )
-    
+
     def test_dataloader(self):
         return DataLoader(
             self.test_dataset,
@@ -312,6 +317,12 @@ class InkmlDataset_PL(pl.LightningDataModule):
 
 
 if __name__ == "__main__":
-    dataset = InkmlDataset("dataset/crohme2019_test.txt")
-    dataset.__getitem__(0)
-    print(len(dataset))
+    # dataset = InkmlDataset("dataset/crohme2019_test.txt")
+    # dataset.__getitem__(0)
+    # print(len(dataset))
+
+    dm = InkmlDataset_PL()
+    dm.setup(stage="test")
+    data_loader = dm.test_dataloader()
+    item = next(iter(data_loader))
+    print(item[0].shape, item[1].shape)
