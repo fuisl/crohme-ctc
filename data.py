@@ -247,7 +247,11 @@ class InkmlDataset(Dataset):
         delta_traces = []
         pen_up = []
         for trace in traces:
-            trace = np.vstack([np.array(trace), np.array(trace)]) if len(trace) == 1 else trace
+            trace = (
+                np.vstack([np.array(trace), np.array(trace)])
+                if len(trace) == 1
+                else trace
+            )
             delta_trace = np.diff(trace, axis=0)
             delta_traces.append(delta_trace[:, :2])
             pen_up.append(np.zeros((len(delta_trace), 1)))
@@ -270,6 +274,7 @@ class InkmlDataset_PL(pl.LightningDataModule):
         train_data: str = "dataset/crohme2019_train.txt",
         val_data: str = "dataset/crohme2019_valid.txt",
         test_data: str = "dataset/crohme2019_test.txt",
+        root_dir: str = "dataset",
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -277,13 +282,14 @@ class InkmlDataset_PL(pl.LightningDataModule):
         self.train_data = train_data
         self.val_data = val_data
         self.test_data = test_data
+        self.root_dir = root_dir
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            self.train_dataset = InkmlDataset(self.train_data)
-            self.val_dataset = InkmlDataset(self.val_data)
+            self.train_dataset = InkmlDataset(self.train_data, root_dir=self.root_dir)
+            self.val_dataset = InkmlDataset(self.val_data, root_dir=self.root_dir)
         if stage == "test" or stage is None:
-            self.test_dataset = InkmlDataset(self.test_data)
+            self.test_dataset = InkmlDataset(self.test_data, root_dir=self.root_dir)
 
     def custom_collate_fn(self, data):
         traces, labels = zip(*data)
