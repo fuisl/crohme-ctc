@@ -101,7 +101,7 @@ TODO:
 - [x] remove duplicate (next in sequence) --> no duplicate found in the dataset
 - [x] normalize (delta x, delta y)
 - [x] concat traces in a single array (n, 2)
-- [ ] pad to max length (collate) ==> do in Dataloader
+- [x] pad to max length (collate) ==> do in Dataloader
 """
 
 
@@ -263,7 +263,7 @@ class InkmlDataset(Dataset):
         translated_label = [self.vocab[label] for label in self.labels[idx].split(" ")]
         label_tensor = torch.tensor(translated_label, dtype=torch.long)
 
-        return delta_traces_tensor, label_tensor
+        return delta_traces_tensor, label_tensor, combined_traces.shape[0], len(translated_label)
 
 
 class InkmlDataset_PL(pl.LightningDataModule):
@@ -292,10 +292,10 @@ class InkmlDataset_PL(pl.LightningDataModule):
             self.test_dataset = InkmlDataset(self.test_data, root_dir=self.root_dir)
 
     def custom_collate_fn(self, data):
-        traces, labels = zip(*data)
+        traces, labels, len_traces, len_labels = zip(*data)
         padded_traces = pad_sequence(traces, batch_first=True)
         padded_labels = pad_sequence(labels, batch_first=True)
-        return padded_traces, padded_labels
+        return padded_traces, padded_labels, len_traces, len_labels
 
     def train_dataloader(self):
         return DataLoader(
