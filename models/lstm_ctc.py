@@ -28,35 +28,144 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
             input_size, hidden_size, num_layers, num_classes
         )
         self.criterion = nn.CTCLoss(blank=blank, zero_infinity=True, reduction="mean")
+        self.vocab = {
+            "": 0,
+            "-": 1,
+            "\\times": 2,
+            "\\{": 3,
+            "\\beta": 4,
+            "m": 5,
+            "Above": 6,
+            "E": 7,
+            "\\infty": 8,
+            "\\forall": 9,
+            "\\cos": 10,
+            "8": 11,
+            ")": 12,
+            "/": 13,
+            "\\sum": 14,
+            "n": 15,
+            "\\pi": 16,
+            "\\geq": 17,
+            "C": 18,
+            "a": 19,
+            "\\mu": 20,
+            "S": 21,
+            "]": 22,
+            "R": 23,
+            "\\gt": 24,
+            "Sup": 25,
+            "x": 26,
+            "p": 27,
+            "\\ldots": 28,
+            "\\int": 29,
+            "\\sqrt": 30,
+            "f": 31,
+            "Right": 32,
+            "k": 33,
+            "\\log": 34,
+            "\\leq": 35,
+            "j": 36,
+            "w": 37,
+            "7": 38,
+            "y": 39,
+            "\\exists": 40,
+            "d": 41,
+            "[": 42,
+            "q": 43,
+            "\\div": 44,
+            "NoRel": 45,
+            "\\phi": 46,
+            "1": 47,
+            "g": 48,
+            "X": 49,
+            "\\in": 50,
+            "\\gamma": 51,
+            "\\prime": 52,
+            "4": 53,
+            "\\pm": 54,
+            "T": 55,
+            "F": 56,
+            "N": 57,
+            "\\lt": 58,
+            "o": 59,
+            "u": 60,
+            "h": 61,
+            "s": 62,
+            "6": 63,
+            "c": 64,
+            "(": 65,
+            "A": 66,
+            "!": 67,
+            "P": 68,
+            "L": 69,
+            "COMMA": 70,
+            "i": 71,
+            "b": 72,
+            "t": 73,
+            "+": 74,
+            "\\neq": 75,
+            "9": 76,
+            "3": 77,
+            "G": 78,
+            ".": 79,
+            "e": 80,
+            "M": 81,
+            "r": 82,
+            "\\sin": 83,
+            "\\lim": 84,
+            "\\lambda": 85,
+            "I": 86,
+            "\\rightarrow": 87,
+            "Inside": 88,
+            "\\sigma": 89,
+            "V": 90,
+            "\\theta": 91,
+            "l": 92,
+            "=": 93,
+            "\\tan": 94,
+            "z": 95,
+            "2": 96,
+            "H": 97,
+            "0": 98,
+            "5": 99,
+            "Below": 100,
+            "|": 101,
+            "\\Delta": 102,
+            "\\alpha": 103,
+            "B": 104,
+            "Y": 105,
+            "v": 106,
+            "\\}": 107,
+            "Sub": 108,
+        }
 
     def forward(self, x):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, in_len, target_len = batch
         y_hat = self.model(x)
-        input_lengths = torch.full((y_hat.size(0),), y_hat.size(1), dtype=torch.long)
-        target_lengths = torch.full((y_hat.size(0),), y.size(1), dtype=torch.long)
+        input_lengths = torch.tensor(in_len)
+        target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, in_len, target_len = batch
         y_hat = self.model(x)
-        y_hat = F.log_softmax(y_hat, dim=2)
-        input_lengths = torch.full((y_hat.size(0),), y_hat.size(1), dtype=torch.long)
-        target_lengths = torch.full((y_hat.size(0),), y.size(1), dtype=torch.long)
+        input_lengths = torch.tensor(in_len)
+        target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, in_len, target_len = batch
         y_hat = self.model(x)
-        y_hat = F.log_softmax(y_hat, dim=2)
-        input_lengths = torch.full((y_hat.size(0),), y_hat.size(1), dtype=torch.long)
-        target_lengths = torch.full((y_hat.size(0),), y.size(1), dtype=torch.long)
+        input_lengths = torch.tensor(in_len)
+        target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
         self.log("test_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         return loss
@@ -74,7 +183,7 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
                 "monitor": "val_loss",
             },
         }
-        return optimizer
+        # return optimizer
 
 
 if __name__ == "__main__":

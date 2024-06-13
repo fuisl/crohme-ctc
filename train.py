@@ -5,16 +5,16 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, Ea
 from pytorch_lightning.loggers import TensorBoardLogger
 
 if __name__ == "__main__":
-    model = LSTM_TemporalClassification_PL(num_layers=1, hidden_size=256, num_classes=110, blank=109)
+    model = LSTM_TemporalClassification_PL(num_layers=1, hidden_size=256, num_classes=109)
     dm = InkmlDataset_PL(root_dir="dataset/crohme2019")
     logger = TensorBoardLogger("logs", name="lstm_ctc")
     
     trainer = Trainer(
         callbacks=[LearningRateMonitor(logging_interval="step"),
                    ModelCheckpoint(monitor="val_loss", save_top_k=3, mode="min"),
-                   EarlyStopping(monitor="val_loss", patience=3, mode="min")],
+                   EarlyStopping(monitor="val_loss", patience=10, mode="min")],
         max_epochs=100,
-        devices=[1],
+        devices=[0],
         num_sanity_val_steps=0,
         fast_dev_run=False,
         log_every_n_steps=1,
@@ -23,4 +23,4 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model, dm)
-    # trainer.test(model, dm)
+    trainer.test(model, dm)
