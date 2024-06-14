@@ -5,10 +5,15 @@ import pytorch_lightning as pl
 
 
 class LSTM_TemporalClassification(nn.Module):
-    def __init__(self, input_size=3, hidden_size=128, num_layers=1, num_classes=109):
+    def __init__(self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, **kwargs):
         super(LSTM_TemporalClassification, self).__init__()
 
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        if "bidirectional" in kwargs:
+            bidirectional = kwargs["bidirectional"]
+        else:
+            bidirectional = False
+
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(hidden_size, num_classes)
         self.log_softmax = nn.LogSoftmax(dim=2)
 
@@ -21,7 +26,7 @@ class LSTM_TemporalClassification(nn.Module):
 
 
 class LSTM_TemporalClassification_PL(pl.LightningModule):
-    def __init__(self, input_size=3, hidden_size=128, num_layers=1, num_classes=109, blank=0):
+    def __init__(self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, blank=0, **kwargs):
         super(LSTM_TemporalClassification_PL, self).__init__()
 
         self.model = LSTM_TemporalClassification(
@@ -174,7 +179,7 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         # TODO: optimize with lr_scheduler
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=10, verbose=True
+            optimizer, mode="min", factor=0.1, patience=5, verbose=True
         )
         return {
             "optimizer": optimizer,
