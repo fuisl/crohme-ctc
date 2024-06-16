@@ -5,7 +5,9 @@ import pytorch_lightning as pl
 
 
 class LSTM_TemporalClassification(nn.Module):
-    def __init__(self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, **kwargs):
+    def __init__(
+        self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, **kwargs
+    ):
         super(LSTM_TemporalClassification, self).__init__()
 
         if "bidirectional" in kwargs:
@@ -13,7 +15,13 @@ class LSTM_TemporalClassification(nn.Module):
         else:
             bidirectional = False
 
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
+        self.lstm = nn.LSTM(
+            input_size,
+            hidden_size,
+            num_layers,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
         self.fc = nn.Linear(hidden_size, num_classes)
         self.log_softmax = nn.LogSoftmax(dim=2)
 
@@ -26,11 +34,25 @@ class LSTM_TemporalClassification(nn.Module):
 
 
 class LSTM_TemporalClassification_PL(pl.LightningModule):
-    def __init__(self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, blank=0, **kwargs):
+    def __init__(
+        self,
+        input_size=3,
+        hidden_size=256,
+        num_layers=2,
+        num_classes=109,
+        blank=0,
+        **kwargs
+    ):
         super(LSTM_TemporalClassification_PL, self).__init__()
 
+        if "bidirectional" in kwargs:
+            bidirectional = kwargs["bidirectional"]
+        else:
+            bidirectional = False
+
+        self.save_hyperparameters(logger=False)
         self.model = LSTM_TemporalClassification(
-            input_size, hidden_size, num_layers, num_classes
+            input_size, hidden_size, num_layers, num_classes, bidirectional=bidirectional
         )
         self.criterion = nn.CTCLoss(blank=blank, zero_infinity=True, reduction="mean")
         self.vocab = {
