@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+import torchmetrics.text
 
 
 class LSTM_TemporalClassification(nn.Module):
@@ -10,10 +11,7 @@ class LSTM_TemporalClassification(nn.Module):
     ):
         super(LSTM_TemporalClassification, self).__init__()
 
-        if "bidirectional" in kwargs:
-            bidirectional = kwargs["bidirectional"]
-        else:
-            bidirectional = False
+        bidirectional = kwargs.get("bidirectional", False)
 
         self.lstm = nn.LSTM(
             input_size,
@@ -22,7 +20,7 @@ class LSTM_TemporalClassification(nn.Module):
             batch_first=True,
             bidirectional=bidirectional,
         )
-        self.fc = nn.Linear(hidden_size, num_classes)
+        self.fc = nn.Linear(hidden_size * 2, num_classes)
         self.log_softmax = nn.LogSoftmax(dim=2)
 
     def forward(self, x):
@@ -45,14 +43,15 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
     ):
         super(LSTM_TemporalClassification_PL, self).__init__()
 
-        if "bidirectional" in kwargs:
-            bidirectional = kwargs["bidirectional"]
-        else:
-            bidirectional = False
+        bidirectional = True
 
         self.save_hyperparameters(logger=False)
         self.model = LSTM_TemporalClassification(
-            input_size, hidden_size, num_layers, num_classes, bidirectional=bidirectional
+            input_size,
+            hidden_size,
+            num_layers,
+            num_classes,
+            bidirectional=bidirectional,
         )
         self.criterion = nn.CTCLoss(blank=blank, zero_infinity=True, reduction="mean")
         self.vocab = {
@@ -176,6 +175,7 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         input_lengths = torch.tensor(in_len)
         target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
+        # TODO: add additional loss
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
@@ -201,7 +201,7 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         # TODO: optimize with lr_scheduler
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.1, patience=5, verbose=True
+            optimizer, mode="min", factor=0.1, patience=5
         )
         return {
             "optimizer": optimizer,

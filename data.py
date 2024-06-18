@@ -244,26 +244,29 @@ class InkmlDataset(Dataset):
 
     def __getitem__(self, idx):
         traces = self.inks[idx].getTraces()
-        delta_traces = []
-        pen_up = []
-        for trace in traces:
-            trace = (
-                np.vstack([np.array(trace), np.array(trace)])
-                if len(trace) == 1
-                else trace
-            )
-            delta_trace = np.diff(trace, axis=0)
-            delta_traces.append(delta_trace[:, :2])
-            pen_up.append(np.zeros((len(delta_trace), 1)))
-            pen_up[-1][-1] = 1
+        combined_traces = np.vstack([np.array(trace)[:, :2] for trace in traces])
+        delta_traces = np.diff(combined_traces, axis=0)
+        zeros_filter = np.all(delta_traces == 0, axis=1)
+        delta_traces = delta_traces[~zeros_filter]
+        delta_traces = delta_traces / np.sqrt((np.square(delta_traces[:, 0]) + np.square(delta_traces[:, 1])))[:, np.newaxis]  # delta x, delta y --> delta x/sqrt(delta x^2 + delta y^2), delta y/sqrt(delta x^2 + delta y^2
 
-        combined_traces = np.hstack([np.vstack(delta_traces), np.concatenate(pen_up)])
+        pen_up = [np.array([0] * len(trace)) for trace in traces]
+        for _, arr in enumerate(pen_up):
+            arr[0] = 1
+
+        combined_pen_up = np.concatenate(pen_up)[1:, np.newaxis][~zeros_filter]
+        combined_traces = np.hstack([delta_traces, combined_pen_up])
         delta_traces_tensor = torch.tensor(combined_traces, dtype=torch.float32)
 
         translated_label = [self.vocab[label] for label in self.labels[idx].split(" ")]
         label_tensor = torch.tensor(translated_label, dtype=torch.long)
 
-        return delta_traces_tensor, label_tensor, combined_traces.shape[0], len(translated_label)
+        return (
+            delta_traces_tensor,
+            label_tensor,
+            combined_traces.shape[0],
+            len(translated_label),
+        )
 
 
 class InkmlDataset_PL(pl.LightningDataModule):
