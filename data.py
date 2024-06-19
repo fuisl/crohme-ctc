@@ -248,14 +248,15 @@ class InkmlDataset(Dataset):
         delta_traces = np.diff(combined_traces, axis=0)
         zeros_filter = np.all(delta_traces == 0, axis=1)
         delta_traces = delta_traces[~zeros_filter]
-        delta_traces = delta_traces / np.sqrt((np.square(delta_traces[:, 0]) + np.square(delta_traces[:, 1])))[:, np.newaxis]  # delta x, delta y --> delta x/sqrt(delta x^2 + delta y^2), delta y/sqrt(delta x^2 + delta y^2
+        distance = np.sqrt((np.square(delta_traces[:, 0]) + np.square(delta_traces[:, 1])))[:, np.newaxis]
+        delta_traces = delta_traces / distance  # delta x, delta y --> delta x/sqrt(delta x^2 + delta y^2), delta y/sqrt(delta x^2 + delta y^2
 
         pen_up = [np.array([0] * len(trace)) for trace in traces]
         for _, arr in enumerate(pen_up):
             arr[0] = 1
 
         combined_pen_up = np.concatenate(pen_up)[1:, np.newaxis][~zeros_filter]
-        combined_traces = np.hstack([delta_traces, combined_pen_up])
+        combined_traces = np.hstack([delta_traces, distance, combined_pen_up])
         delta_traces_tensor = torch.tensor(combined_traces, dtype=torch.float32)
 
         translated_label = [self.vocab[label] for label in self.labels[idx].split(" ")]
