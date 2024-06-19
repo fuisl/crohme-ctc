@@ -3,8 +3,10 @@ from models.lstm_ctc import LSTM_TemporalClassification_PL
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
+import torch
 
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision('high')
     model = LSTM_TemporalClassification_PL()
     dm = InkmlDataset_PL(root_dir="dataset/crohme2019")
     logger = TensorBoardLogger("logs", name="lstm_ctc")
@@ -16,7 +18,7 @@ if __name__ == "__main__":
         max_epochs=100,
         devices=[0],
         num_sanity_val_steps=0,
-        fast_dev_run=True,
+        fast_dev_run=False,
         log_every_n_steps=1,
         default_root_dir="checkpoint/",
         logger=logger
