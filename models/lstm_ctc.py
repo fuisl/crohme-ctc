@@ -3,12 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchmetrics.text
-from torchaudio.models.decoder import ctc_decoder
+from torchaudio.models.decoder import ctc_decoder, cuda_ctc_decoder
 
 
 class LSTM_TemporalClassification(nn.Module):
     def __init__(
-        self, input_size=3, hidden_size=256, num_layers=2, num_classes=109, **kwargs
+        self, input_size=4, hidden_size=256, num_layers=2, num_classes=109, **kwargs
     ):
         super(LSTM_TemporalClassification, self).__init__()
 
@@ -35,7 +35,7 @@ class LSTM_TemporalClassification(nn.Module):
 class LSTM_TemporalClassification_PL(pl.LightningModule):
     def __init__(
         self,
-        input_size=3,
+        input_size=4,
         hidden_size=256,
         num_layers=2,
         num_classes=109,
@@ -168,94 +168,79 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         }
         self.relation = ["Above", "Below", "Inside", "NoRel", "Right", "Sub", "Sup"]
         self.relation_idx = [6, 100, 88, 45, 32, 108, 25]
+        self.decoder = cuda_ctc_decoder(tokens=list(self.vocab.keys()))
+        self.metric = torchmetrics.text.EditDistance()
     def forward(self, x):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y, in_len, target_len = batch
+        batch_size = x.size(0)
         y_hat = self.model(x)
         input_lengths = torch.tensor(in_len)
         target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
         # TODO: add additional loss
-        self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y, in_len, target_len = batch
+        batch_size = x.size(0)
         y_hat = self.model(x)
-        input_lengths = torch.tensor(in_len)
-        target_lengths = torch.tensor(target_len)
+        input_lengths = torch.tensor(in_len).cuda()
+        target_lengths = torch.tensor(target_len).cuda()
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
-        
-        decoder = ctc_decoder(
-            lexicon=None,
-            tokens=list(self.vocab.keys()),
-            nbest=1,
-            blank_token='',
-            sil_token='',
-            unk_word='',
-        )
-
-        metric = torchmetrics.text.EditDistance()
 
         keys = list(self.vocab.keys())
-        decoded_output = decoder(y_hat.cpu())
-        output_str_list = [" ".join([keys[i] for i in output[0].tokens.numpy()]) for output in decoded_output]
+        decoded_output = self.decoder(y_hat, input_lengths.to(torch.int32))
+
+        output_str_list = [" ".join(output[0].words) for output in decoded_output]
         target_str_list = [" ".join([keys[i] for i in target.cpu().numpy()]).strip() for target in y]
-        edit_distance = metric(output_str_list, target_str_list)
+        edit_distance = self.metric(output_str_list, target_str_list)
 
-        output_relation = [" ".join([keys[i] for i in output[0].tokens.numpy() if i in self.relation_idx]) for output in decoded_output]
+        output_relation = [" ".join([x for x in output[0].words if x in self.relation]) for output in decoded_output]
         target_relation = [" ".join([keys[i] for i in target.cpu().numpy() if i in self.relation_idx]).strip() for target in y]
-        relation_edit_distance = metric(output_relation, target_relation)
+        relation_edit_distance = self.metric(output_relation, target_relation)
 
-        output_symbol = [" ".join([keys[i] for i in output[0].tokens.numpy() if i not in self.relation_idx]) for output in decoded_output]
+        output_symbol = [" ".join([x for x in output[0].words if x not in self.relation]) for output in decoded_output]
         target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
-        symbol_edit_distance = metric(output_symbol, target_symbol)
+        symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
-        self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True)
-        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True)
-        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True)
-        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y, in_len, target_len = batch
+        batch_size = x.size(0)
         y_hat = self.model(x)
-        input_lengths = torch.tensor(in_len)
-        target_lengths = torch.tensor(target_len)
+        input_lengths = torch.tensor(in_len).cuda()
+        target_lengths = torch.tensor(target_len).cuda()
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
-        
-        decoder = ctc_decoder(
-            lexicon=None,
-            tokens=list(self.vocab.keys()),
-            nbest=1,
-            blank_token='',
-            sil_token='',
-            unk_word='',
-        )
-
-        metric = torchmetrics.text.EditDistance()
 
         keys = list(self.vocab.keys())
-        decoded_output = decoder(y_hat.cpu())
-        output_str_list = [" ".join([keys[i] for i in output[0].tokens.numpy()]) for output in decoded_output]
+        decoded_output = self.decoder(y_hat, input_lengths.to(torch.int32))
+
+        output_str_list = [" ".join(output[0].words) for output in decoded_output]
         target_str_list = [" ".join([keys[i] for i in target.cpu().numpy()]).strip() for target in y]
-        edit_distance = metric(output_str_list, target_str_list)
+        edit_distance = self.metric(output_str_list, target_str_list)
 
-        output_relation = [" ".join([keys[i] for i in output[0].tokens.numpy() if i in self.relation_idx]) for output in decoded_output]
+        output_relation = [" ".join([x for x in output[0].words if x in self.relation]) for output in decoded_output]
         target_relation = [" ".join([keys[i] for i in target.cpu().numpy() if i in self.relation_idx]).strip() for target in y]
-        relation_edit_distance = metric(output_relation, target_relation)
+        relation_edit_distance = self.metric(output_relation, target_relation)
 
-        output_symbol = [" ".join([keys[i] for i in output[0].tokens.numpy() if i not in self.relation_idx]) for output in decoded_output]
+        output_symbol = [" ".join([x for x in output[0].words if x not in self.relation]) for output in decoded_output]
         target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
-        symbol_edit_distance = metric(output_symbol, target_symbol)
+        symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
-        self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True)
-        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True)
-        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True)
-        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return loss
 
