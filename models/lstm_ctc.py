@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchmetrics.text
+from torchaudio.models.decoder import ctc_decoder
 
 
 class LSTM_TemporalClassification(nn.Module):
@@ -165,7 +166,8 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
             "\\}": 107,
             "Sub": 108,
         }
-
+        self.relation = ["Above", "Below", "Inside", "NoRel", "Right", "Sub", "Sup"]
+        self.relation_idx = [6, 100, 88, 45, 32, 108, 25]
     def forward(self, x):
         return self.model(x)
 
@@ -185,7 +187,37 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         input_lengths = torch.tensor(in_len)
         target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
+        
+        decoder = ctc_decoder(
+            lexicon=None,
+            tokens=list(self.vocab.keys()),
+            nbest=1,
+            blank_token='',
+            sil_token='',
+            unk_word='',
+        )
+
+        metric = torchmetrics.text.EditDistance()
+
+        keys = list(self.vocab.keys())
+        decoded_output = decoder(y_hat.cpu())
+        output_str_list = [" ".join([keys[i] for i in output[0].tokens.numpy()]) for output in decoded_output]
+        target_str_list = [" ".join([keys[i] for i in target.cpu().numpy()]).strip() for target in y]
+        edit_distance = metric(output_str_list, target_str_list)
+
+        output_relation = [" ".join([keys[i] for i in output[0].tokens.numpy() if i in self.relation_idx]) for output in decoded_output]
+        target_relation = [" ".join([keys[i] for i in target.cpu().numpy() if i in self.relation_idx]).strip() for target in y]
+        relation_edit_distance = metric(output_relation, target_relation)
+
+        output_symbol = [" ".join([keys[i] for i in output[0].tokens.numpy() if i not in self.relation_idx]) for output in decoded_output]
+        target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
+        symbol_edit_distance = metric(output_symbol, target_symbol)
+
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True)
+        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -194,7 +226,37 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         input_lengths = torch.tensor(in_len)
         target_lengths = torch.tensor(target_len)
         loss = self.criterion(y_hat.permute(1, 0, 2), y, input_lengths, target_lengths)
-        self.log("test_loss", loss, on_epoch=True, prog_bar=True, logger=True)
+        
+        decoder = ctc_decoder(
+            lexicon=None,
+            tokens=list(self.vocab.keys()),
+            nbest=1,
+            blank_token='',
+            sil_token='',
+            unk_word='',
+        )
+
+        metric = torchmetrics.text.EditDistance()
+
+        keys = list(self.vocab.keys())
+        decoded_output = decoder(y_hat.cpu())
+        output_str_list = [" ".join([keys[i] for i in output[0].tokens.numpy()]) for output in decoded_output]
+        target_str_list = [" ".join([keys[i] for i in target.cpu().numpy()]).strip() for target in y]
+        edit_distance = metric(output_str_list, target_str_list)
+
+        output_relation = [" ".join([keys[i] for i in output[0].tokens.numpy() if i in self.relation_idx]) for output in decoded_output]
+        target_relation = [" ".join([keys[i] for i in target.cpu().numpy() if i in self.relation_idx]).strip() for target in y]
+        relation_edit_distance = metric(output_relation, target_relation)
+
+        output_symbol = [" ".join([keys[i] for i in output[0].tokens.numpy() if i not in self.relation_idx]) for output in decoded_output]
+        target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
+        symbol_edit_distance = metric(output_symbol, target_symbol)
+
+        self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True)
+        self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True)
+
         return loss
 
     def configure_optimizers(self):
