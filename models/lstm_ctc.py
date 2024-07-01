@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchmetrics.text
 from torchaudio.models.decoder import ctc_decoder, cuda_ctc_decoder
+import numpy as np
 
 
 class LSTM_TemporalClassification(nn.Module):
@@ -207,10 +208,13 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
         symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
+        wer = edit_distance / np.array([len(target.split()) for target in target_str_list]).mean()
+
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("total_wer", wer, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return loss
 
@@ -237,10 +241,13 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         target_symbol = [" ".join([keys[i] for i in target.cpu().numpy() if i not in self.relation_idx]).strip() for target in y]
         symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
+        wer = edit_distance / np.array([len(target.split()) for target in target_str_list]).mean()
+
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("total_wer", wer, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return loss
 
