@@ -13,7 +13,7 @@ if __name__ == "__main__":
     
     trainer = Trainer(
         callbacks=[LearningRateMonitor(logging_interval="step"),
-                   ModelCheckpoint(monitor="val_loss", save_top_k=5, mode="min"),
+                   ModelCheckpoint(filename="{epoch}-{wer}", monitor="wer", save_top_k=5, mode="min"),
                    EarlyStopping(monitor="val_loss", patience=10, mode="min")],
         max_epochs=100,
         devices=[0],
