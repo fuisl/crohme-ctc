@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-import torchmetrics.text
 from torchaudio.models.decoder import ctc_decoder, cuda_ctc_decoder
 import numpy as np
 from .utils.edit import TokenEditDistance
