@@ -19,10 +19,12 @@ class RelativePositionLoss(nn.Module):
         probs_rel = probs * rel_mask
 
         pen_up = pen_up.unsqueeze(-1)
-        probs_rel_pen_up = probs_rel * pen_up
-        sum_probs_rel_pen_up = probs_rel_pen_up.sum(dim=-1)
+        pen_down = 1 - pen_up
 
-        loss = -torch.log(sum_probs_rel_pen_up + 1e-10)
+        probs_rel_pen_down = probs_rel * pen_down
+        sum_probs_rel_pen_down = probs_rel_pen_down.sum(dim=-1)
+
+        loss = -torch.log(1 - sum_probs_rel_pen_down + 1e-8)
 
         if self.reduction == "mean":
             return loss.mean()
@@ -30,22 +32,6 @@ class RelativePositionLoss(nn.Module):
             return loss.sum()
         
         return loss
-
-
-    def sample_alignments(self, log_probs, N):
-        # Convert log probabilities to probabilities
-        probs = torch.exp(log_probs)  # Shape: (B, T, 109)
-        probs /= probs.sum(dim=-1, keepdim=True)  # Normalize
-
-        # Initialize tensor to store sampled alignments
-        B, T, C = probs.shape
-        samples = torch.zeros(B, N, T, dtype=torch.long, device=probs.device)
-
-        # Efficient sampling per timestep across the whole batch
-        for t in range(T):
-            samples[:, :, t] = torch.multinomial(probs[:, t, :], N, replacement=True)
-
-        return samples
 
 class AWPLoss(nn.Module):
     """

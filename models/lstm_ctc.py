@@ -8,7 +8,7 @@ from .utils.edit import TokenEditDistance
 from .utils.loss import RelativePositionLoss
 
 # Constants
-ALPHA = 0.05  # Relative Position Loss weight
+ALPHA = 0.1  # Relative Position Loss weight
 
 
 class LSTM_TemporalClassification(nn.Module):
