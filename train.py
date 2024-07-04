@@ -1,3 +1,7 @@
+"""
+This script is used to train the model using PyTorch Lightning.
+"""
+
 from data import InkmlDataset_PL
 from models.lstm_ctc import LSTM_TemporalClassification_PL
 from pytorch_lightning import Trainer
@@ -7,7 +11,7 @@ import torch
 
 if __name__ == "__main__":
     torch.set_float32_matmul_precision('high')
-    model = LSTM_TemporalClassification_PL().load_from_checkpoint("logs/lstm_ctc/version_4/checkpoints/epoch=29-wer=0.ckpt")
+    model = LSTM_TemporalClassification_PL()
     dm = InkmlDataset_PL(root_dir="dataset/crohme2019")
     logger = TensorBoardLogger("logs", name="lstm_ctc")
     

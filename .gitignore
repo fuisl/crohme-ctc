@@ -162,4 +162,6 @@ cython_debug/
 #.idea/
 
 dataset/crohme2019/
-/dataset
+crohme-ctc-pytorch.ipynb 
+logs/
+dataset

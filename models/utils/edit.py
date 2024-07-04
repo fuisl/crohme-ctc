@@ -1,3 +1,7 @@
+"""
+Custom implementation of TokenEditDistance metric to handle list of strings as input.
+"""
+
 from typing import Any, Literal, Union, Sequence
 from torchmetrics.functional.text.helper import _LevenshteinEditDistance as _LE_distance
 from torchmetrics.text import EditDistance
@@ -34,6 +38,9 @@ def _edit_distance_update(
 
 
 class TokenEditDistance(EditDistance):
+    """
+    Computes the edit distance between two lists of tokens.
+    """
     def __init__(
         self,
         substitution_cost: int = 1,
