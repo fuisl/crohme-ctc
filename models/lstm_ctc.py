@@ -248,14 +248,16 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
         wer = edit_distance / np.array([len(target.split()) for target in target_str_list]).mean()
+        wer_relation = relation_edit_distance / np.array([len(target.split()) for target in target_relation]).mean()
+        wer_symbol = symbol_edit_distance / np.array([len(target.split()) for target in target_symbol]).mean()
 
         self.log("val_CTCloss", ctc_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("val_RelLoss", rel_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("val_loss", total_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
-        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
-        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
+        self.log("wer_rel", wer_relation, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
+        self.log("wer_symbol", wer_symbol, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
         self.log("total_wer", wer, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return total_loss
@@ -288,14 +290,16 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         symbol_edit_distance = self.metric(output_symbol, target_symbol)
 
         wer = edit_distance / np.array([len(target.split()) for target in target_str_list]).mean()
+        wer_relation = relation_edit_distance / np.array([len(target.split()) for target in target_relation]).mean()
+        wer_symbol = symbol_edit_distance / np.array([len(target.split()) for target in target_symbol]).mean()
 
         self.log("test_CTCloss", ctc_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("test_RelLoss", rel_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         self.log("test_loss", total_loss, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         self.log("edit_distance", edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
-        self.log("relation_edit_distance", relation_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
-        self.log("symbol_edit_distance", symbol_edit_distance, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        self.log("wer_rel", wer_relation, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
+        self.log("wer_symbol", wer_symbol, on_epoch=True, prog_bar=False, logger=True, batch_size=batch_size)
         self.log("total_wer", wer, on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
 
         return total_loss
