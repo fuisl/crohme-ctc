@@ -1,7 +1,26 @@
+"""
+Customize Loss functions for the model.
+"""
+
 import torch.nn as nn
 import torch
 
 class RelativePositionLoss(nn.Module):
+    """
+    Relative Position Loss.
+
+    This loss is based on the observation that the pen-up and pen-down actions are related to the relative position of the strokes.
+
+    The loss is defined as:
+
+    L = -log(1 - sum(p_rel * pen_down))
+    
+        where p_rel is the probability of the relation and pen_down is the probability of the pen-down action.
+
+    The loss is computed for each stroke in the sequence.
+
+    The loss can be computed in two modes: "mean" or "sum".
+    """
     def __init__(self, reduction="mean"):
         super(RelativePositionLoss, self).__init__()
         self.reduction = reduction
@@ -36,6 +55,7 @@ class RelativePositionLoss(nn.Module):
 class AWPLoss(nn.Module):
     """
     WARNING: EXPERIMENTAL
+    TODO: Implement f_prop method.
 
     
     Align With Purpose Loss.

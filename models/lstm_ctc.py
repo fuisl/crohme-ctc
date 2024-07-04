@@ -12,6 +12,19 @@ ALPHA = 0.1  # Relative Position Loss weight
 
 
 class LSTM_TemporalClassification(nn.Module):
+    """
+    Base LSTM model for temporal classification.
+
+    Architecture:
+        LSTM -> FC -> LogSoftmax
+
+    Args:
+        input_size (int): Number of features in the input
+        hidden_size (int): Number of features in the hidden state
+        num_layers (int): Number of recurrent layers
+        num_classes (int): Number of classes
+        bidirectional (bool): If True, becomes a bidirectional LSTM
+    """
     def __init__(
         self, input_size=4, hidden_size=256, num_layers=2, num_classes=109, **kwargs
     ):
@@ -38,6 +51,16 @@ class LSTM_TemporalClassification(nn.Module):
 
 
 class LSTM_TemporalClassification_PL(pl.LightningModule):
+    """
+    PyTorch Lightning module for LSTM Temporal Classification.
+
+    Args:
+        input_size (int): Number of features in the input
+        hidden_size (int): Number of features in the hidden state
+        num_layers (int): Number of recurrent layers
+        num_classes (int): Number of classes
+        blank (int): Blank label for CTC loss
+    """
     def __init__(
         self,
         input_size=4,

@@ -1,3 +1,27 @@
+"""
+This module provides classes for loading and processing INKML data for the CROHME-CTC project.
+
+Classes:
+- Segment: Represents a segment compound of strokes with an id and label.
+- Inkml: Represents an INKML file with strokes, segmentation, and labels.
+- InkmlDataset: Represents a dataset of INKML files for training and evaluation.
+- InkmlDataset_PL: Represents a PyTorch Lightning data module for handling the INKML dataset.
+
+Functions:
+- fixNS: Builds the right tag or element name with namespace.
+- loadFromFile: Loads the ink from an INKML file (strokes, segments, labels).
+- getTraces: Retrieves the traces from an INKML file.
+- custom_collate_fn: Custom collate function for the data loader.
+
+Usage:
+1. Create an instance of the InkmlDataset class, providing the path to the annotation file and the root directory of the dataset.
+2. Use the instance to access the INKML data and labels for training and evaluation.
+3. Create an instance of the InkmlDataset_PL class, providing the necessary parameters.
+4. Use the instance to create data loaders for training and evaluation using the train_dataloader() and val_dataloader() methods.
+
+Note: The INKML data should be organized in the specified format with strokes, segmentation, and labels.
+"""
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -106,6 +130,14 @@ TODO:
 
 
 class InkmlDataset(Dataset):
+    """
+    INKML dataset class for loading and processing INKML files.
+
+    Args:
+        annotation (str): Path to the annotation file.
+        root_dir (str): Root directory of the dataset.
+    """
+
     def __init__(self, annotation, root_dir="dataset"):
         with open(annotation, "r") as f:
             self.files = f.readlines()
@@ -233,12 +265,6 @@ class InkmlDataset(Dataset):
             self.inks.append(inkml)
             self.labels.append(label)
 
-            # traces = inkml.getTraces()
-            # for trace in traces:
-            #     for i in range(0, len(trace) - 1):
-            #         if trace[i] == trace[i + 1]:
-            #             print(i)
-
     def __len__(self):
         return len(self.inks)
 
@@ -248,8 +274,12 @@ class InkmlDataset(Dataset):
         delta_traces = np.diff(combined_traces, axis=0)
         zeros_filter = np.all(delta_traces == 0, axis=1)
         delta_traces = delta_traces[~zeros_filter]
-        distance = np.sqrt((np.square(delta_traces[:, 0]) + np.square(delta_traces[:, 1])))[:, np.newaxis]
-        delta_traces = delta_traces / distance  # delta x, delta y --> delta x/sqrt(delta x^2 + delta y^2), delta y/sqrt(delta x^2 + delta y^2
+        distance = np.sqrt(
+            (np.square(delta_traces[:, 0]) + np.square(delta_traces[:, 1]))
+        )[:, np.newaxis]
+        delta_traces = (
+            delta_traces / distance
+        )  # delta x, delta y --> delta x/sqrt(delta x^2 + delta y^2), delta y/sqrt(delta x^2 + delta y^2
 
         pen_up = [np.array([0] * len(trace)) for trace in traces]
         for _, arr in enumerate(pen_up):
@@ -271,6 +301,10 @@ class InkmlDataset(Dataset):
 
 
 class InkmlDataset_PL(pl.LightningDataModule):
+    """
+    PyTorch Lightning data module for handling the INKML dataset.
+    """
+
     def __init__(
         self,
         batch_size: int = 10,
