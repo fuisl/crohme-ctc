@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 import torchmetrics.text
 from torchaudio.models.decoder import ctc_decoder, cuda_ctc_decoder
 import numpy as np
+from .utils.edit import TokenEditDistance
 
 
 class LSTM_TemporalClassification(nn.Module):
@@ -170,7 +171,7 @@ class LSTM_TemporalClassification_PL(pl.LightningModule):
         self.relation = ["Above", "Below", "Inside", "NoRel", "Right", "Sub", "Sup"]
         self.relation_idx = [6, 100, 88, 45, 32, 108, 25]
         self.decoder = cuda_ctc_decoder(tokens=list(self.vocab.keys()))
-        self.metric = torchmetrics.text.EditDistance()
+        self.metric = TokenEditDistance()
     def forward(self, x):
         return self.model(x)
 
