@@ -12,14 +12,14 @@ import torch
 if __name__ == "__main__":
     torch.set_float32_matmul_precision('high')
     model = LSTM_TemporalClassification_PL()
-    dm = InkmlDataset_PL(root_dir="dataset/crohme2019")
+    dm = InkmlDataset_PL(root_dir="dataset/crohme2019", batch_size=32, workers=8)
     logger = TensorBoardLogger("logs", name="lstm_ctc")
     
     trainer = Trainer(
         callbacks=[LearningRateMonitor(logging_interval="step"),
                    ModelCheckpoint(filename="{epoch}-{wer:.4e}", monitor="total_wer", save_top_k=5, mode="min"),
                    EarlyStopping(monitor="val_loss", patience=10, mode="min")],
-        max_epochs=1,
+        max_epochs=100,
         devices=[0],
         num_sanity_val_steps=0,
         fast_dev_run=False,
